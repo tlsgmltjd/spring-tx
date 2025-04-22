@@ -9,6 +9,10 @@ import org.springframework.boot.test.context.TestConfiguration;
 import org.springframework.context.annotation.Bean;
 import org.springframework.transaction.annotation.Transactional;
 
+// 스프링은 체크 예외는 비즈니스 의미가 있을 때 사용하고, 런타임 예외는 복구 불가능한 예외라고 정의한다.
+// 체크 예외 -> 비즈니스 의미가 있을 때 사용
+// 런타임 예외 -> 복구 불가능한 예외
+
 @SpringBootTest
 public class RollbackTest {
 
