@@ -9,8 +9,10 @@ import org.springframework.boot.test.context.TestConfiguration;
 import org.springframework.context.annotation.Bean;
 import org.springframework.jdbc.datasource.DataSourceTransactionManager;
 import org.springframework.transaction.PlatformTransactionManager;
+import org.springframework.transaction.TransactionDefinition;
 import org.springframework.transaction.TransactionStatus;
 import org.springframework.transaction.UnexpectedRollbackException;
+import org.springframework.transaction.interceptor.DefaultTransactionAttribute;
 import org.springframework.transaction.support.DefaultTransactionDefinition;
 
 import javax.sql.DataSource;
@@ -157,4 +159,29 @@ public class BasicTxTest {
         // -> 외부 트랜잭션에서 트랜잭션 동기화 매니저에서 롤백전용이 마크되어있는지 확인한다. 마크되어있다면 물리트랜잭션을 롤백시킨다.
         // -> 내부 롤백, 외부 커밋시, 즉 커밋 호출했는데 내부에서 롤백되어 실제로 물리적 롤백 호출시 --> UnexpectedRollbackException 예외를 트랜잭션 매니저가 던진다.
     }
+
+    @Test
+    void inner_rollback_requires_new() {
+        log.info("-- 외부 트랜잭션 시작");
+        TransactionStatus outer = txm.getTransaction(new DefaultTransactionDefinition());
+        log.info("outer.isNewTransaction()={}", outer.isNewTransaction());
+
+        log.info("-- 내부 트랜잭션 시작");
+
+        // REQUIRES_NEW -> 외부, 내부 트랜잭션을 별도의 물리 트랜잭션을 갖게 하는 옵션, 각각의 디비 커넥션을 갖고, 서로 영향을 주지 않는다.
+        DefaultTransactionDefinition definition = new DefaultTransactionDefinition();
+        definition.setPropagationBehavior(TransactionDefinition.PROPAGATION_REQUIRES_NEW);
+        // Suspending current transaction, creating new transaction with name [null] <- 외부 트랜잭션을 잠시 미룬다.
+        // Acquired Connection [HikariProxyConnection@1842475577 ...] -> 새로운 커넥션을 획득한다.
+
+        TransactionStatus inner = txm.getTransaction(definition);
+        log.info("inner.isNewTransaction()={}", inner.isNewTransaction());
+
+        log.info("내부 트랜잭션 롤백");
+        txm.rollback(inner);
+
+        log.info("외부 트랜잭션 커밋");
+        txm.commit(outer);
+    }
+
 }
