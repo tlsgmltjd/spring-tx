@@ -59,9 +59,27 @@ class MemberServiceTest {
     @Test
     void singleTx() {
         // given
-        String username = "outerTxOff_success";
+        String username = "singleTx";
 
         // when -> 모든 데이터가 정상 저장된다.
+        memberService.joinV1(username);
+
+        // then
+        Assertions.assertTrue(memberRepository.find(username).isPresent());
+        Assertions.assertTrue(logRepository.find(username).isPresent());
+    }
+
+    /**
+     * memberService    @Tx:ON
+     * memberRepository @Tx:ON
+     * logRepository    @Tx:ON
+     */
+    @Test
+    void outerTxOn_success() {
+        // given
+        String username = "outerTxOn_success";
+
+        // when -> memberService 에서 트랜잭션 시작 ->> memberRepo, logRepo 에서 시작한 트랜잭션들은 기존 트랜잭션을 이어받아 실행, 각각 Repo Tx는 커밋하지 않고 넘김.
         memberService.joinV1(username);
 
         // then
