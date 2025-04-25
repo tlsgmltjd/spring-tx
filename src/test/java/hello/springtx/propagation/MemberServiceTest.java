@@ -5,6 +5,7 @@ import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.transaction.UnexpectedRollbackException;
 
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
@@ -99,6 +100,26 @@ class MemberServiceTest {
 
         // when -> memberService 신규 트랜잭션 생성 -> memberRepo 커밋(물리 커밋 호출 X) -> logRepo 롤백(롤백온리 마킹) -> memberService 물리 롤백
         assertThatThrownBy(() -> memberService.joinV1(username));
+
+        // then
+        Assertions.assertTrue(memberRepository.find(username).isEmpty());
+        Assertions.assertTrue(logRepository.find(username).isEmpty());
+    }
+
+    /**
+     * memberService    @Tx:ON
+     * memberRepository @Tx:ON
+     * logRepository    @Tx:ON RuntimeException
+     */
+    @Test
+    void recoverException_fail() {
+        // given
+        String username = "로그예외_recoverException_fail";
+
+        // when -> logRepo Tx에서 예외 발생하여 롤백(물리 트랜잭션에 롤백온리 마킹) -> 하지만, 맴버 서비스에서는 해당 예외를 잡아서 먹어버림.
+        // -> 물리 커밋하려하지만 롤백 온리가 마킹되어있어 물리 트랜잭션을 롤백함. -> UnexpectedRollbackException
+        assertThatThrownBy(() -> memberService.joinV2(username))
+                .isInstanceOf(UnexpectedRollbackException.class);
 
         // then
         Assertions.assertTrue(memberRepository.find(username).isEmpty());
