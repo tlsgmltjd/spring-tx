@@ -86,4 +86,22 @@ class MemberServiceTest {
         Assertions.assertTrue(memberRepository.find(username).isPresent());
         Assertions.assertTrue(logRepository.find(username).isPresent());
     }
+
+    /**
+     * memberService    @Tx:ON
+     * memberRepository @Tx:ON
+     * logRepository    @Tx:ON RuntimeException
+     */
+    @Test
+    void outerTxOn_fail() {
+        // given
+        String username = "로그예외_outerTxOn_fail";
+
+        // when -> memberService 신규 트랜잭션 생성 -> memberRepo 커밋(물리 커밋 호출 X) -> logRepo 롤백(롤백온리 마킹) -> memberService 물리 롤백
+        assertThatThrownBy(() -> memberService.joinV1(username));
+
+        // then
+        Assertions.assertTrue(memberRepository.find(username).isEmpty());
+        Assertions.assertTrue(logRepository.find(username).isEmpty());
+    }
 }
